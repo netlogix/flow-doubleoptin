@@ -7,9 +7,11 @@ namespace Flownative\DoubleOptIn;
  *                                                                        */
 
 use TYPO3\Flow\Annotations as Flow;
+use TYPO3\Flow\I18n\Translator;
 use TYPO3\Flow\Mvc\ActionRequest;
 use TYPO3\Flow\Utility\Algorithms;
 use TYPO3\Flow\Utility\Arrays;
+use TYPO3\Flow\Utility\Unicode\Functions;
 use TYPO3\SwiftMailer\Message;
 
 /**
@@ -47,6 +49,12 @@ class Helper {
 	 * @var \TYPO3\Flow\Log\LoggerInterface
 	 */
 	protected $logger;
+
+	/**
+	 * @var Translator
+	 * @Flow\Inject
+	 */
+	protected $translator;
 
 	/**
 	 * @var ActionRequest
@@ -172,7 +180,7 @@ class Helper {
 		$mail = new Message();
 		$mail->setFrom([$preset['mail']['from']['address'] => $preset['mail']['from']['name']])
 			->setTo($recipientAddress)
-			->setSubject($preset['mail']['subject']);
+			->setSubject($this->translator->translateByOriginalLabel($preset['mail']['subject'], [], null, null, 'Main', $this->getTemplatePackage($preset['mail']['message']['plaintext'])));
 
 		$templateVariables = array_merge([
 			'activationLink' => $activationLink,
@@ -221,5 +229,19 @@ class Helper {
 		$preset = $this->presets[$presetName];
 
 		return Arrays::arrayMergeRecursiveOverrule($default, $preset, TRUE);
+	}
+
+	/**
+	 * Returns the package name containing the given template
+	 *
+	 * @param string $templatePathAndFilename
+	 * @return string
+	 */
+	protected function getTemplatePackage($templatePathAndFilename) {
+		$packageName = Functions::parse_url($templatePathAndFilename, PHP_URL_HOST);
+		if (!is_string($packageName)) {
+			throw new \InvalidArgumentException(sprintf('The package name for template "%s" could not be extracted', $templatePathAndFilename), 1488561774);
+		}
+		return $packageName;
 	}
 }
